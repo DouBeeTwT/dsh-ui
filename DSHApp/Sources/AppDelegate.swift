@@ -4,10 +4,11 @@ import WebKit
 /// Main application delegate: owns the window, the embedded WebView, the menu
 /// bar, and the background-server lifecycle.
 @MainActor
-final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate {
+final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNavigationDelegate {
 
     private var window: NSWindow!
     private var webView: WKWebView!
+    private var statusItem: NSStatusItem!
     private var statusTimer: Timer?
     private var isStarting = false
     private var lastServerUp = false
@@ -17,19 +18,28 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         buildMenu()
         buildWindow()
+        buildStatusItem()
         NSApp.activate(ignoringOtherApps: true)
         startServerAndLoad()
         startStatusTimer()
     }
 
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
-        // Closing the desktop App also ends its App-owned backend process.
-        return true
+        // The close button hides the window into the menu bar; the App (and its
+        // backend) keep running until the user quits from the menu bar icon.
+        return false
     }
 
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
-        if !flag { window?.makeKeyAndOrderFront(nil) }
+        if !flag { showMainWindow() }
         return true
+    }
+
+    func windowShouldClose(_ sender: NSWindow) -> Bool {
+        // Hide into the menu bar instead of closing, so the window (and the
+        // loaded web session) stay alive and reopening is instant.
+        sender.orderOut(nil)
+        return false
     }
 
     func applicationWillTerminate(_ notification: Notification) {
@@ -56,6 +66,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate {
         window.collectionBehavior.insert(.fullScreenPrimary)
         window.standardWindowButton(.zoomButton)?.isEnabled = true
         window.isReleasedWhenClosed = false
+        window.delegate = self
 
         // WebView — fills the whole window (no status bar)
         let config = WKWebViewConfiguration()
@@ -78,6 +89,104 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate {
         ])
 
         window.makeKeyAndOrderFront(nil)
+    }
+
+    // MARK: - Menu bar status item
+
+    /// Keeps the App alive in the menu bar after the window is closed, and
+    /// offers a quick way back into the window or a full quit.
+    private func buildStatusItem() {
+        statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
+        if let button = statusItem.button {
+            button.image = makeStatusIcon() ?? makeFallbackStatusIcon()
+            button.toolTip = "DeepSeek Harness"
+        }
+
+        let menu = NSMenu()
+        menu.addItem(withTitle: "打开 DSH", action: #selector(showMainWindow), keyEquivalent: "")
+        menu.addItem(.separator())
+        menu.addItem(withTitle: "退出 DSH", action: #selector(quitApp), keyEquivalent: "")
+        statusItem.menu = menu
+    }
+
+    @objc private func showMainWindow() {
+        NSApp.activate(ignoringOtherApps: true)
+        if window.isMiniaturized { window.deminiaturize(nil) }
+        window.makeKeyAndOrderFront(nil)
+    }
+
+    @objc private func quitApp() {
+        NSApp.terminate(nil)
+    }
+
+    /// Renders the bundled whale logo as a template image: the silhouette's
+    /// coverage becomes the alpha channel, so it follows the light/dark menu bar.
+    private func makeStatusIcon() -> NSImage? {
+        guard let url = Bundle.main.url(forResource: "StatusIconSource", withExtension: "png"),
+              let source = NSImage(contentsOf: url) else { return nil }
+
+        let pixels = 36 // 18 pt at 2x
+        guard let rep = NSBitmapImageRep(
+            bitmapDataPlanes: nil,
+            pixelsWide: pixels,
+            pixelsHigh: pixels,
+            bitsPerSample: 8,
+            samplesPerPixel: 4,
+            hasAlpha: true,
+            isPlanar: false,
+            colorSpaceName: .deviceRGB,
+            bytesPerRow: 0,
+            bitsPerPixel: 0
+        ) else { return nil }
+
+        NSGraphicsContext.saveGraphicsState()
+        NSGraphicsContext.current = NSGraphicsContext(bitmapImageRep: rep)
+        NSGraphicsContext.current?.imageInterpolation = .high
+        source.draw(
+            in: NSRect(x: 0, y: 0, width: pixels, height: pixels),
+            from: NSRect(origin: .zero, size: source.size),
+            operation: .copy,
+            fraction: 1
+        )
+        NSGraphicsContext.restoreGraphicsState()
+
+        // Black whale on white -> opaque whale on transparent. The bitmap is
+        // RGBA with premultiplied alpha, so RGB=0 is always correct.
+        if let data = rep.bitmapData {
+            for y in 0..<pixels {
+                for x in 0..<pixels {
+                    let offset = y * rep.bytesPerRow + x * 4
+                    let luminance = (0.2126 * Double(data[offset])
+                                   + 0.7152 * Double(data[offset + 1])
+                                   + 0.0722 * Double(data[offset + 2])) / 255.0
+                    let alpha = UInt8(((1.0 - luminance) * 255.0).rounded())
+                    data[offset] = 0
+                    data[offset + 1] = 0
+                    data[offset + 2] = 0
+                    data[offset + 3] = alpha
+                }
+            }
+        }
+
+        let image = NSImage(size: NSSize(width: 18, height: 18))
+        rep.size = NSSize(width: 18, height: 18) // 36 px at 2x == 18 pt
+        image.addRepresentation(rep)
+        image.isTemplate = true
+        return image
+    }
+
+    private func makeFallbackStatusIcon() -> NSImage {
+        if let symbol = NSImage(systemSymbolName: "terminal.fill", accessibilityDescription: "DSH") {
+            symbol.isTemplate = true
+            return symbol
+        }
+        let image = NSImage(size: NSSize(width: 18, height: 18))
+        image.lockFocus()
+        NSColor.labelColor.setFill()
+        NSBezierPath(ovalIn: NSRect(x: 4, y: 4, width: 10, height: 10)).fill()
+        image.unlockFocus()
+        image.isTemplate = true
+        return image
     }
 
     // MARK: - Backend lifecycle
