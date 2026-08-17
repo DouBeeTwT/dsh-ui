@@ -56,7 +56,12 @@ window.__ModuleLoader__.load({
 .usage-save:hover{background:var(--dsw-alias-interactive-bg-hover)}
 .usage-save:disabled{opacity:.5;cursor:default}
 .usage-saved{color:var(--dsw-alias-state-success-primary);font-size:12px}
-.usage-error{color:var(--dsw-alias-state-error-primary);margin:0;font-size:12px}`;
+.usage-error{color:var(--dsw-alias-state-error-primary);margin:0;font-size:12px}
+/* 设置面板左侧导航：把"用量"行的齿轮图标换成硬币图标（icon/coin.svg）。
+   外壳的 navIcon(id) 对未知 id 回退到齿轮，且注册契约不支持自定义图标，
+   因此用结构选择器定位该行（settings.section 按 order 排序：general/models/plugins/usage/agent-presets，
+   usage 是第 4 个 navCell）。图标用 mask + currentColor 渲染，跟随主题色自动适配深浅色。 */
+[role="dialog"] nav > div > button:nth-child(4) > svg:first-child{color:transparent;background:var(--dsw-alias-label-primary);-webkit-mask:url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDI0IDEwMjQiPjxwYXRoIGQ9Ik01MTIgNjRDMjY0LjYgNjQgNjQgMjY0LjYgNjQgNTEyczIwMC42IDQ0OCA0NDggNDQ4IDQ0OC0yMDAuNiA0NDgtNDQ4Uzc1OS40IDY0IDUxMiA2NHogbTAgODIwYy0yMDUuNCAwLTM3Mi0xNjYuNi0zNzItMzcyczE2Ni42LTM3MiAzNzItMzcyIDM3MiAxNjYuNiAzNzIgMzcyLTE2Ni42IDM3Mi0zNzIgMzcyeiIgZmlsbD0iIzAwMCIvPjxwYXRoIGQ9Ik02NzEuNiAyOTloLTU5LjVjLTMgMC01LjggMS43LTcuMSA0LjRsLTkwLjYgMTgwSDUxMWwtOTAuNi0xODBjLTEuNC0yLjctNC4xLTQuNC03LjEtNC40aC02MC43Yy0xLjMgMC0yLjYgMC4zLTMuOCAxLTMuOSAyLjEtNS4zIDctMy4yIDEwLjlMNDU3IDUxNS43aC02MS40Yy00LjQgMC04IDMuNi04IDh2MjkuOWMwIDQuNCAzLjYgOCA4IDhoODEuN1Y2MDNoLTgxLjdjLTQuNCAwLTggMy42LTggOHYyOS45YzAgNC40IDMuNiA4IDggOGg4MS43VjcxN2MwIDQuNCAzLjYgOCA4IDhoNTQuM2M0LjQgMCA4LTMuNiA4LTh2LTY4LjFoODJjNC40IDAgOC0zLjYgOC04VjYxMWMwLTQuNC0zLjYtOC04LThoLTgydi00MS41aDgyYzQuNCAwIDgtMy42IDgtOHYtMjkuOWMwLTQuNC0zLjYtOC04LThoLTYybDExMS4xLTIwNC44YzAuNi0xLjIgMS0yLjUgMS0zLjgtMC4xLTQuNC0zLjctOC04LjEtOHoiIGZpbGw9IiMwMDAiLz48L3N2Zz4=") no-repeat center/16px 16px;mask:url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDI0IDEwMjQiPjxwYXRoIGQ9Ik01MTIgNjRDMjY0LjYgNjQgNjQgMjY0LjYgNjQgNTEyczIwMC42IDQ0OCA0NDggNDQ4IDQ0OC0yMDAuNiA0NDgtNDQ4Uzc1OS40IDY0IDUxMiA2NHogbTAgODIwYy0yMDUuNCAwLTM3Mi0xNjYuNi0zNzItMzcyczE2Ni42LTM3MiAzNzItMzcyIDM3MiAxNjYuNiAzNzIgMzcyLTE2Ni42IDM3Mi0zNzIgMzcyeiIgZmlsbD0iIzAwMCIvPjxwYXRoIGQ9Ik02NzEuNiAyOTloLTU5LjVjLTMgMC01LjggMS43LTcuMSA0LjRsLTkwLjYgMTgwSDUxMWwtOTAuNi0xODBjLTEuNC0yLjctNC4xLTQuNC03LjEtNC40aC02MC43Yy0xLjMgMC0yLjYgMC4zLTMuOCAxLTMuOSAyLjEtNS4zIDctMy4yIDEwLjlMNDU3IDUxNS43aC02MS40Yy00LjQgMC04IDMuNi04IDh2MjkuOWMwIDQuNCAzLjYgOCA4IDhoODEuN1Y2MDNoLTgxLjdjLTQuNCAwLTggMy42LTggOHYyOS45YzAgNC40IDMuNiA4IDggOGg4MS43VjcxN2MwIDQuNCAzLjYgOCA4IDhoNTQuM2M0LjQgMCA4LTMuNiA4LTh2LTY4LjFoODJjNC40IDAgOC0zLjYgOC04VjYxMWMwLTQuNC0zLjYtOC04LThoLTgydi00MS41aDgyYzQuNCAwIDgtMy42IDgtOHYtMjkuOWMwLTQuNC0zLjYtOC04LThoLTYybDExMS4xLTIwNC44YzAuNi0xLjIgMS0yLjUgMS0zLjgtMC4xLTQuNC0zLjctOC04LjEtOHoiIGZpbGw9IiMwMDAiLz48L3N2Zz4=") no-repeat center/16px 16px;width:16px;height:16px;-webkit-mask-size:16px 16px;mask-size:16px 16px}`;
     const cssTag = "data-plugin-css=\"@deepseek-ai/dsh-client-ui-token-usage/css\"";
     if (typeof document !== "undefined" && document.querySelector("style[" + cssTag + "]") === null) {
       const tag = document.createElement("style");
@@ -71,6 +76,8 @@ window.__ModuleLoader__.load({
       { key: "input", label: "输入" },
       { key: "output", label: "输出" }
     ];
+    // 柱状图只画输入/输出两组；CATS（含缓存命中）仍供价格配置使用。
+    const CHART_CATS = CATS.filter((c) => c.key !== "cacheRead");
     const CHART_W = 520;
     const CHART_H = 292;
     const ML = 56, MR = 12, MT = 0, MB = 38;
@@ -183,7 +190,7 @@ window.__ModuleLoader__.load({
       const [heatHover, setHeatHover] = react.useState(null);
       const [priceModel, setPriceModel] = react.useState("");
       const [draft, setDraft] = react.useState({ cacheRead: "", input: "", output: "" });
-      const [goalDraft, setGoalDraft] = react.useState({ cost: "100", tokens: "100000000", count: "200" });
+      const [goalDraft, setGoalDraft] = react.useState({ cost: "100", tokens: "100", count: "200" });
       const [saving, setSaving] = react.useState(false);
       const [saved, setSaved] = react.useState(false);
       const [goalSaving, setGoalSaving] = react.useState(false);
@@ -247,9 +254,10 @@ window.__ModuleLoader__.load({
 
       react.useEffect(() => {
         if (!data || !data.goals) return;
+        // Token 上限以 M（百万）为单位展示；存储仍是原始 token 数。
         setGoalDraft({
           cost: String(data.goals.cost),
-          tokens: String(data.goals.tokens),
+          tokens: String(data.goals.tokens / 1e6),
           count: String(data.goals.count),
         });
         setGoalSaved(false);
@@ -283,6 +291,8 @@ window.__ModuleLoader__.load({
         if (n >= 1e3) return (n / 1e3).toFixed(0) + "k";
         return String(Math.round(n));
       };
+      // 缓存命中率：占比百分比，数字保留两位小数
+      const fmtPercent = (n) => (n * 100).toFixed(2) + "%";
 
       const onPrice = (key) => (event) => {
         setDraft((prev) => ({ ...prev, [key]: event.target.value }));
@@ -318,7 +328,8 @@ window.__ModuleLoader__.load({
         setGoalSaved(false);
         try {
           const res = await usageSetGoals(ctx, {
-            goals: { cost: toNum(goalDraft.cost), tokens: toNum(goalDraft.tokens), count: Math.round(toNum(goalDraft.count)) }
+            // Token 上限输入为 M（百万），换算回原始 token 数存储。
+            goals: { cost: toNum(goalDraft.cost), tokens: Math.round(toNum(goalDraft.tokens) * 1e6), count: Math.round(toNum(goalDraft.count)) }
           });
           setData((prev) => (prev ? { ...prev, goals: res.goals } : prev));
           setGoalSaved(true);
@@ -348,10 +359,10 @@ window.__ModuleLoader__.load({
         return { fill: "#8b9099", opacity: 0.6 };
       };
 
-      const catTotals = CATS.map((cat) => stackOrder.reduce((s, m) => s + catOf(m, cat.key), 0));
+      const catTotals = CHART_CATS.map((cat) => stackOrder.reduce((s, m) => s + catOf(m, cat.key), 0));
       const maxTotal = Math.max(1, ...catTotals);
       const groupGap = 40;
-      const groupW = (plotW - groupGap * 2) / 3;
+      const groupW = (plotW - groupGap * (CHART_CATS.length - 1)) / CHART_CATS.length;
       const barW = Math.min(46, groupW * 0.4);
       const yTicks = 4;
 
@@ -369,7 +380,7 @@ window.__ModuleLoader__.load({
         }, fmtAxis(v)));
       }
 
-      CATS.forEach((cat, ci) => {
+      CHART_CATS.forEach((cat, ci) => {
         const gx = ML + ci * (groupW + groupGap);
         const x = gx + (groupW - barW) / 2;
         const catTotal = catTotals[ci];
@@ -408,9 +419,6 @@ window.__ModuleLoader__.load({
       const summaryInput = filter === "" ? totals.input : catOf(filter, "input");
       const summaryOutput = filter === "" ? totals.output : catOf(filter, "output");
       const summaryTokens = summaryCache + summaryInput + summaryOutput;
-      const summaryCount = filter === ""
-        ? (totals.count || 0)
-        : (win && win.byModel[filter] ? (win.byModel[filter].count || 0) : 0);
       const summaryCost = win
         ? (filter === "" ? totals.cost : (win.byModel[filter] ? win.byModel[filter].cost : 0))
         : 0;
@@ -418,7 +426,8 @@ window.__ModuleLoader__.load({
       const cards = [
         { key: "cost", label: "费用", value: fmtCostCard(summaryCost) },
         { key: "tokens", label: "总 Token", value: fmtTokensCard(summaryTokens) },
-        { key: "count", label: "请求次数", value: fmtInt(summaryCount) }
+        // 缓存命中率：命中 ÷ (命中 + 普通输入)，不含输出。
+        { key: "cacheHit", label: "缓存命中", value: fmtPercent((summaryCache + summaryInput) > 0 ? summaryCache / (summaryCache + summaryInput) : 0) }
       ];
 
       const chart = win && models.length > 0
@@ -562,10 +571,12 @@ window.__ModuleLoader__.load({
         count: g && g.count > 0 ? g.count : 200
       };
       // 每个日期一个三环嵌套半圆图：外环费用(深蓝)、中环总Token(中间蓝)、内环请求次数(浅蓝)。
+      // 环粗细 w=8；半径间距必须 ≥ 环粗，否则相邻环会重叠（外 30 / 中 19 / 内 8，
+      // 环带 [26,34] / [15,23] / [4,12]，各留 3px 间隙）。
       const ringMeta = [
-        { key: "cost", R: 28, color: "var(--dsw-static-deepseek-500)" },
-        { key: "tokens", R: 22, color: "var(--dsw-static-deepseek-400)" },
-        { key: "count", R: 16, color: "var(--dsw-static-deepseek-300)" }
+        { key: "cost", R: 30, color: "var(--dsw-static-deepseek-500)" },
+        { key: "tokens", R: 19, color: "var(--dsw-static-deepseek-400)" },
+        { key: "count", R: 8, color: "var(--dsw-static-deepseek-300)" }
       ];
       const weekDays = [];
       {
@@ -589,7 +600,7 @@ window.__ModuleLoader__.load({
         const wd = data && data.week && data.week[i]
           ? data.week[i]
           : { cost: 0, tokens: (data && data.daily && data.daily[key]) || 0, count: 0 };
-        const cx = 44, cy = 46, w = 5;
+        const cx = 44, cy = 46, w = 8;
         const paths = [];
         ringMeta.forEach((rm) => {
           const p = goalsMap[rm.key] > 0 ? Math.min(1, Math.max(0, wd[rm.key] / goalsMap[rm.key])) : 0;
@@ -652,11 +663,11 @@ window.__ModuleLoader__.load({
             })
           ),
           el("div", { key: "tokens", className: "usage-price-field" },
-            el("label", { className: "usage-price-label", htmlFor: "usage-goal-tokens" }, "Token 上限"),
+            el("label", { className: "usage-price-label", htmlFor: "usage-goal-tokens" }, "Token 上限（M）"),
             el("input", {
               id: "usage-goal-tokens", type: "number", min: "0", step: "any",
               className: "usage-price-input", value: goalDraft.tokens,
-              onChange: onGoal("tokens"), placeholder: "100000000"
+              onChange: onGoal("tokens"), placeholder: "100"
             })
           ),
           el("div", { key: "count", className: "usage-price-field" },
@@ -704,7 +715,7 @@ window.__ModuleLoader__.load({
       if (slots === undefined) return;
       const disposeRemote = await ctx.remote.$mount(TYPERT_REMOTE);
       slots.inject("settings.section", () => slots.register(
-        { name: "settings.section", id: "usage", order: 16, label: () => "用量统计" },
+        { name: "settings.section", id: "usage", order: 16, label: () => "用量" },
         (props) => react.createElement(UsageSection, { ctx })
       ));
       return async () => {
