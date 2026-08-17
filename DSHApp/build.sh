@@ -48,6 +48,10 @@ if [ -x "$BUILD_DIR/make_icon" ]; then
   echo "  icon generated -> $RES_DIR/AppIcon.icns"
 fi
 
+# Menu bar status icon source: the whale logo is rendered into an adaptive
+# template image at runtime (see AppDelegate.makeStatusIcon).
+cp DSHApp/Assets/AppIconSource.png "$RES_DIR/StatusIconSource.png"
+
 echo "==> Ad-hoc code signing"
 codesign --force --deep --sign - "$APP_DIR" 2>/dev/null || true
 
