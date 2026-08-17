@@ -4,7 +4,7 @@ import WebKit
 /// Main application delegate: owns the window, the embedded WebView, the menu
 /// bar, and the background-server lifecycle.
 @MainActor
-final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate {
+final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNavigationDelegate {
 
     private var window: NSWindow!
     private var webView: WKWebView!
@@ -36,6 +36,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate {
         statusTimer?.invalidate()
         statusTimer = nil
         ServerManager.shared.shutdown()
+    }
+
+    // MARK: - NSWindowDelegate
+    // Keep keyboard focus inside the WebView: without it, clipboard commands
+    // (⌘C/⌘V and navigator.clipboard) are dropped by the window.
+
+    func windowDidBecomeKey(_ notification: Notification) {
+        window?.makeFirstResponder(webView)
     }
 
     // MARK: - Setup
@@ -77,7 +85,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate {
             webView.bottomAnchor.constraint(equalTo: content.bottomAnchor),
         ])
 
+        window.delegate = self
+        // Make the WebView the first responder so keyboard focus and clipboard
+        // commands (⌘C/⌘V, navigator.clipboard) reach the page.
+        window.initialFirstResponder = webView
         window.makeKeyAndOrderFront(nil)
+        window.makeFirstResponder(webView)
     }
 
     // MARK: - Backend lifecycle
@@ -112,6 +125,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate {
         var request = URLRequest(url: ServerManager.shared.serverURL)
         request.timeoutInterval = 5
         webView.load(request)
+        // The WKWebView may not have been key yet when the page loaded;
+        // make sure it owns the keyboard/clipboard focus.
+        DispatchQueue.main.async { [weak self] in
+            guard let self else { return }
+            self.window?.makeFirstResponder(self.webView)
+        }
     }
 
     private func loadWaitingPage() {
@@ -226,6 +245,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate {
         appMenu.addItem(.separator())
         appMenu.addItem(withTitle: "退出 DSH", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
         appMenuItem.submenu = appMenu
+
+        // Edit menu — REQUIRED for copy/paste to work inside the WebView.
+        // On macOS the ⌘C/⌘V/⌘X/⌘A shortcuts are dispatched through the main
+        // menu's key equivalents to the responder chain; without these items
+        // WKWebView never receives the copy/paste commands.
+        let editMenuItem = NSMenuItem()
+        mainMenu.addItem(editMenuItem)
+        let editMenu = NSMenu(title: "编辑")
+        editMenu.addItem(withTitle: "撤销", action: Selector(("undo:")), keyEquivalent: "z")
+        editMenu.addItem(withTitle: "重做", action: Selector(("redo:")), keyEquivalent: "Z")
+        editMenu.addItem(.separator())
+        editMenu.addItem(withTitle: "剪切", action: #selector(NSText.cut(_:)), keyEquivalent: "x")
+        editMenu.addItem(withTitle: "复制", action: #selector(NSText.copy(_:)), keyEquivalent: "c")
+        editMenu.addItem(withTitle: "粘贴", action: #selector(NSText.paste(_:)), keyEquivalent: "v")
+        editMenu.addItem(withTitle: "全选", action: #selector(NSText.selectAll(_:)), keyEquivalent: "a")
+        editMenuItem.submenu = editMenu
 
         // Server menu
         let serverMenuItem = NSMenuItem()
