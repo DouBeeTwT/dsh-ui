@@ -16,6 +16,8 @@
 #   - 组合采用 dsh 的 profile bundle 机制（唯一来源，避免与 patch 行重复）:
 #       ~/.dsh/profiles/web/package.json  → dsh.profile.bundles
 #     插件自带 bundle patch（本目录 cordis.patch.yml，dsh.bundle.patch 指向它）。
+#     整个过程**不经过 pnpm**：不写 file: 依赖、不生成 pnpm-workspace.yaml，
+#     dsh 通过扁平软链（profiles/node_modules/）解析到本目录源码并生成前后端 entry。
 #     旧版写入的 ~/.dsh/profiles/web/cordis.patch.yml 组合行会被自动清理，
 #     否则与 bundle 重复会触发 "duplicate loader entry id: token-usage" 启动崩溃。
 #   - @deepseek-ai/dsh-typert-protocol 必须是指向运行中 dsh 部署副本的软链
@@ -95,7 +97,7 @@ ensure_symlink() {
 }
 
 # ---- 确保 profile bundle 组合（唯一来源）：初始化缺失的 profile，并在
-#      已有 manifest 上幂等追加 bundle 与 file: 依赖 ----
+#      已有 manifest 上幂等追加 bundle 注册（不依赖 pnpm / 不写 file: 依赖）----
 ensure_profile_manifest() {
   mkdir -p "$PROFILE_DIR"
   if [ ! -f "$MANIFEST" ]; then
@@ -104,9 +106,6 @@ ensure_profile_manifest() {
 {
   "name": "dsh-profile-web",
   "private": true,
-  "dependencies": {
-    "@deepseek-ai/dsh-client-ui-token-usage": "file:$ROOT"
-  },
   "dsh": {
     "profile": {
       "bundles": [
@@ -126,17 +125,13 @@ EOF
   if [ ! -f "$PATCH_FILE" ]; then
     printf '[]\n' > "$PATCH_FILE"
   fi
-  if [ ! -f "$PROFILE_DIR/pnpm-workspace.yaml" ]; then
-    printf 'packages:\n  - .\n\nnodeLinker: hoisted\nautoInstallPeers: false\n' > "$PROFILE_DIR/pnpm-workspace.yaml"
-  fi
-  # 幂等追加 bundle + file: 依赖（用 python3 做精确 JSON 编辑）
-  python3 - "$MANIFEST" "$ROOT" <<'PY'
+  # 幂等追加 bundle 注册（用 python3 做精确 JSON 编辑；不写任何 file: 依赖，
+  # 不生成 pnpm-workspace.yaml —— 插件靠扁平软链 + bundle 解析，全程不经过 pnpm）
+  python3 - "$MANIFEST" <<'PY'
 import json, sys
-p, root = sys.argv[1], sys.argv[2]
+p = sys.argv[1]
 with open(p) as f:
     m = json.load(f)
-deps = m.setdefault('dependencies', {})
-deps.setdefault('@deepseek-ai/dsh-client-ui-token-usage', 'file:' + root)
 bundles = m.setdefault('dsh', {}).setdefault('profile', {}).setdefault('bundles', [])
 if '@deepseek-ai/dsh-client-ui-token-usage' not in bundles:
     bundles.append('@deepseek-ai/dsh-client-ui-token-usage')

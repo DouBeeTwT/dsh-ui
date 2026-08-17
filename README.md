@@ -108,6 +108,10 @@ build/DSH.app/Contents/MacOS/DSH --check
 仓库自带一个 DSH 插件 `plugin/token_usage/`，在界面中展示模型用量
 （token 消耗、价格、趋势图）。由 `install.command` 自动完成安装：
 
+> **整个安装过程不经过 pnpm**：不写 `file:` 依赖、不生成 `pnpm-workspace.yaml`、
+> 无需执行 `pnpm install`。dsh 通过扁平软链解析到本目录源码，并据此生成
+> 前后端 entry。你只需运行安装脚本，不必自行安装或运行 pnpm。
+
 - 将插件源码**软链**到 dsh 的扁平回退目录（Node 跟随软链直接读本目录源码）：
   `~/.dsh/profiles/node_modules/@deepseek-ai/dsh-client-ui-token-usage`
 - 通过 **profile bundle 组合**挂载（`~/.dsh/profiles/web/package.json` 的
