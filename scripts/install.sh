@@ -11,9 +11,10 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 
-RED=$'\033[31m'; GREEN=$'\033[32m'; BLUE=$'\033[34m'; RESET=$'\033[0m'
+RED=$'\033[31m'; GREEN=$'\033[32m'; YELLOW=$'\033[33m'; BLUE=$'\033[34m'; RESET=$'\033[0m'
 info() { printf '%s==> %s%s\n' "$BLUE" "$*" "$RESET"; }
 ok()   { printf '    %s✔ %s%s\n' "$GREEN" "$*" "$RESET"; }
+warn() { printf '    %s! %s%s\n' "$YELLOW" "$*" "$RESET" >&2; }
 die()  { printf '%sError: %s%s\n' "$RED" "$*" "$RESET" >&2; exit 1; }
 
 CHECK=0
@@ -44,6 +45,21 @@ if ! bash "$ROOT/scripts/bootstrap.sh" "$@"; then
 fi
 if [ "$CHECK" -eq 1 ]; then
   ok "All prerequisites present — nothing else to do."
+  echo ""
+  echo "  Plugin status:"
+  PLUGIN_DIR="$ROOT/plugin/token_usage"
+  PLUGIN_LINK="$HOME/.dsh/profiles/node_modules/@deepseek-ai/dsh-client-ui-token-usage"
+  PATCH_FILE="$HOME/.dsh/profiles/web/cordis.patch.yml"
+  if [ -L "$PLUGIN_LINK" ] && [ "$(readlink "$PLUGIN_LINK")" = "$PLUGIN_DIR" ]; then
+    ok "token-usage plugin: installed (symlink OK)"
+  else
+    warn "token-usage plugin: not installed (run install.command to set it up)"
+  fi
+  if [ -f "$PATCH_FILE" ] && grep -Fq "@deepseek-ai/dsh-client-ui-token-usage" "$PATCH_FILE"; then
+    ok "token-usage composition: present"
+  else
+    warn "token-usage composition: missing from $PATCH_FILE"
+  fi
   exit 0
 fi
 
@@ -59,6 +75,17 @@ bash DSHApp/build.sh
 APP_DIR="$ROOT/build/DSH.app"
 APP_NAME="DSH.app"
 
+info "Quitting any running DSH (for a clean overwrite)"
+if pgrep -x DSH >/dev/null 2>&1; then
+  osascript -e 'tell application "DSH" to quit' 2>/dev/null || true
+  sleep 1
+  pgrep -x DSH >/dev/null 2>&1 && pkill -x DSH 2>/dev/null || true
+  sleep 1
+  echo "  DSH stopped."
+else
+  echo "  DSH is not running."
+fi
+
 info "Installing to /Applications"
 if [ ! -w /Applications ]; then
   echo "  /Applications not writable — attempting sudo (you may be prompted)."
@@ -72,9 +99,16 @@ fi
 info "Removing any legacy always-on LaunchAgent"
 "/Applications/$APP_NAME/Contents/MacOS/DSH" --stop-agent || true
 
+info "Installing token-usage plugin"
+bash "$ROOT/plugin/token_usage/sync.sh" --install
+
 echo ""
 echo "✅ Installed. Open the app from /Applications or run:"
 echo "   open /Applications/$APP_NAME"
 echo ""
 echo "The dsh web backend starts silently with DSH.app and stops when the App exits."
 echo "   logs: ~/Library/Logs/dsh-web.log"
+echo ""
+echo "The token-usage plugin is symlinked into ~/.dsh/profiles and follows this repo:"
+echo "   ~/.dsh/profiles/node_modules/@deepseek-ai/dsh-client-ui-token-usage"
+echo "Verify it with:  bash plugin/token_usage/sync.sh --verify"

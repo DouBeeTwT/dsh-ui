@@ -70,8 +70,9 @@ bash install.command
 
 之后才进入编译与安装步骤：
 
-1. 在本机编译 App，安装到 `/Applications/DSH.app`；
-2. 启动 DSH。
+1. 在本机编译 App，安装到 `/Applications/DSH.app`（覆盖已存在的旧版本）；
+2. 安装内置插件（模型用量统计），软链到 `~/.dsh/profiles` 并写入组合配置；
+3. 启动 DSH。
 
 #### 常用选项
 
@@ -92,20 +93,45 @@ open build/DSH.app
 ## 状态自检
 
 ```bash
-# 查看依赖是否齐全（缺什么一目了然，只检测不安装）
-bash scripts/bootstrap.sh --check
+# 查看依赖 + 插件是否齐全（只检测不安装）
+bash install.command --check
 # 例：✔ Xcode Command Line Tools  ✔ Homebrew  ✔ Node.js + npm (v22.x.x)  ✔ dsh ...
+#     ✔ token-usage plugin: installed (symlink OK)
 
 # 查看 App 运行状态
 build/DSH.app/Contents/MacOS/DSH --check
 # 例：server_up=true owned_process=false legacy_agent=false dsh=/.../bin/dsh ...
 ```
 
+## 内置插件：模型用量统计
+
+仓库自带一个 DSH 客户端插件 `plugin/token_usage/`，在界面中展示模型用量
+（token 消耗、价格、趋势图）。由 `install.command` 自动完成安装：
+
+- 将插件源码**软链**到 dsh 的扁平回退目录（Node 跟随软链直接读本目录源码）：
+  `~/.dsh/profiles/node_modules/@deepseek-ai/dsh-client-ui-token-usage`
+- 在组合配置写入一行：`~/.dsh/profiles/web/cordis.patch.yml`（id: token-usage）
+
+因为走软链，更新插件只需 `git pull` 后**重启 dsh web 服务**（退出并重开
+DSH.app）即可生效，无需重新安装。手动管理：
+
+```bash
+bash plugin/token_usage/sync.sh --install    # 安装 / 覆盖（幂等，可反复执行）
+bash plugin/token_usage/sync.sh --verify    # 校验包解析、host 加载、client 挂载契约
+bash plugin/token_usage/sync.sh --dump      # 查看组合配置里的 token-usage 行
+bash plugin/token_usage/sync.sh --uninstall # 移除软链与组合行
+```
+
+重复安装（覆盖）时，脚本会先移除旧的软链/实体目录再重建软链，可安全反复执行；
+安装脚本也会在覆盖 App 前先退出正在运行的 DSH，避免“正在使用”导致覆盖失败。
+
 ## 卸载
 
 ```bash
 bash scripts/uninstall.sh
 ```
+
+卸载会一并移除 App、token-usage 插件（软链与组合行）以及遗留的 LaunchAgent。
 
 ## 工作原理
 
