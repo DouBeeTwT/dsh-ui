@@ -49,16 +49,26 @@ if [ "$CHECK" -eq 1 ]; then
   echo "  Plugin status:"
   PLUGIN_DIR="$ROOT/plugin/token_usage"
   PLUGIN_LINK="$HOME/.dsh/profiles/node_modules/@deepseek-ai/dsh-client-ui-token-usage"
-  PATCH_FILE="$HOME/.dsh/profiles/web/cordis.patch.yml"
+  MANIFEST="$HOME/.dsh/profiles/web/package.json"
+  TYPERT_LINK="$PLUGIN_DIR/node_modules/@deepseek-ai/dsh-typert-protocol"
   if [ -L "$PLUGIN_LINK" ] && [ "$(readlink "$PLUGIN_LINK")" = "$PLUGIN_DIR" ]; then
     ok "token-usage plugin: installed (symlink OK)"
   else
     warn "token-usage plugin: not installed (run install.command to set it up)"
   fi
-  if [ -f "$PATCH_FILE" ] && grep -Fq "@deepseek-ai/dsh-client-ui-token-usage" "$PATCH_FILE"; then
-    ok "token-usage composition: present"
+  if [ -f "$MANIFEST" ] && python3 -c "
+import json, sys
+m = json.load(open('$MANIFEST'))
+sys.exit(0 if '@deepseek-ai/dsh-client-ui-token-usage' in m.get('dsh', {}).get('profile', {}).get('bundles', []) else 1)
+" 2>/dev/null; then
+    ok "token-usage composition: bundle declared in profile manifest"
   else
-    warn "token-usage composition: missing from $PATCH_FILE"
+    warn "token-usage composition: missing from $MANIFEST"
+  fi
+  if [ -L "$TYPERT_LINK" ]; then
+    ok "token-usage typert-protocol link: OK"
+  else
+    warn "token-usage typert-protocol link: missing (run install.command to set it up)"
   fi
   exit 0
 fi
@@ -99,7 +109,7 @@ fi
 info "Removing any legacy always-on LaunchAgent"
 "/Applications/$APP_NAME/Contents/MacOS/DSH" --stop-agent || true
 
-info "Installing token-usage plugin"
+info "Installing token-usage plugin (symlinks + bundle composition + history backfill)"
 bash "$ROOT/plugin/token_usage/sync.sh" --install
 
 echo ""
@@ -109,6 +119,7 @@ echo ""
 echo "The dsh web backend starts silently with DSH.app and stops when the App exits."
 echo "   logs: ~/Library/Logs/dsh-web.log"
 echo ""
-echo "The token-usage plugin is symlinked into ~/.dsh/profiles and follows this repo:"
-echo "   ~/.dsh/profiles/node_modules/@deepseek-ai/dsh-client-ui-token-usage"
+echo "The token-usage plugin is symlinked into ~/.dsh/profiles (bundle composition);"
+echo "pre-install usage was backfilled into ~/.dsh/usage-stats.backfill.json and is"
+echo "merged into the ledger on first start."
 echo "Verify it with:  bash plugin/token_usage/sync.sh --verify"

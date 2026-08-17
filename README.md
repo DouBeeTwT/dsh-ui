@@ -71,7 +71,7 @@ bash install.command
 之后才进入编译与安装步骤：
 
 1. 在本机编译 App，安装到 `/Applications/DSH.app`（覆盖已存在的旧版本）；
-2. 安装内置插件（模型用量统计），软链到 `~/.dsh/profiles` 并写入组合配置；
+2. 安装内置插件（模型用量统计）：软链 + bundle 组合 + 回填安装前历史用量；
 3. 启动 DSH。
 
 #### 常用选项
@@ -105,21 +105,36 @@ build/DSH.app/Contents/MacOS/DSH --check
 
 ## 内置插件：模型用量统计
 
-仓库自带一个 DSH 客户端插件 `plugin/token_usage/`，在界面中展示模型用量
+仓库自带一个 DSH 插件 `plugin/token_usage/`，在界面中展示模型用量
 （token 消耗、价格、趋势图）。由 `install.command` 自动完成安装：
 
 - 将插件源码**软链**到 dsh 的扁平回退目录（Node 跟随软链直接读本目录源码）：
   `~/.dsh/profiles/node_modules/@deepseek-ai/dsh-client-ui-token-usage`
-- 在组合配置写入一行：`~/.dsh/profiles/web/cordis.patch.yml`（id: token-usage）
+- 通过 **profile bundle 组合**挂载（`~/.dsh/profiles/web/package.json` 的
+  `dsh.profile.bundles` 里声明 `@deepseek-ai/dsh-client-ui-token-usage`，
+  插件自带的 `cordis.patch.yml` 是其 bundle patch）。旧版写入
+  `cordis.patch.yml` 的组合行会被自动清理——它与 bundle 重复会触发
+  `duplicate loader entry id: token-usage` 启动崩溃。
+- 插件依赖的 `@deepseek-ai/dsh-typert-protocol` 会被安装为**指向运行中 dsh
+  部署副本的软链**（`plugin/token_usage/node_modules/` 下）。必须是软链而非
+  实体拷贝：实体拷贝会让插件与网关各持一个模块实例，Remote 端点标记互相
+  不可见，用量统计会显示不出数据（RPC 报 invocation-unavailable）。
+
+**安装时一次性回填历史用量**：安装脚本会扫描 DSH 的会话日志
+（`~/.dsh/sessions/**/session.jsonl.zstd`），生成
+`~/.dsh/usage-stats.backfill.json`，插件 Host 首次启动时把它合并进
+`~/.dsh/usage-stats.json`（去重 + 防重叠），因此**插件安装之前**的模型用量
+也会一并出现在统计里，无需手动补数据。
 
 因为走软链，更新插件只需 `git pull` 后**重启 dsh web 服务**（退出并重开
 DSH.app）即可生效，无需重新安装。手动管理：
 
 ```bash
-bash plugin/token_usage/sync.sh --install    # 安装 / 覆盖（幂等，可反复执行）
-bash plugin/token_usage/sync.sh --verify    # 校验包解析、host 加载、client 挂载契约
-bash plugin/token_usage/sync.sh --dump      # 查看组合配置里的 token-usage 行
-bash plugin/token_usage/sync.sh --uninstall # 移除软链与组合行
+bash plugin/token_usage/sync.sh --install    # 全新安装/覆盖（幂等）：软链 + 依赖软链 + bundle + 回填历史
+bash plugin/token_usage/sync.sh --verify    # 校验包解析、host 加载、client 挂载契约、bundle、回填产物
+bash plugin/token_usage/sync.sh --dump      # 查看 bundle 组合行 / 软链 / 回填状态
+bash plugin/token_usage/sync.sh --backfill  # 仅重新生成历史用量回填文件
+bash plugin/token_usage/sync.sh --uninstall # 移除软链、bundle 组合行与旧 patch 行
 ```
 
 重复安装（覆盖）时，脚本会先移除旧的软链/实体目录再重建软链，可安全反复执行；

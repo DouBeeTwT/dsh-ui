@@ -5,3 +5,8 @@ build/
 dist/
 *.dmg
 *.zip
+
+# 本地数据与依赖（不应提交）
+.dsh/
+node_modules/
+.workbuddy/

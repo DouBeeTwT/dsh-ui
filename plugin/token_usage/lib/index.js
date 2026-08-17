@@ -1,4 +1,5 @@
 import { Remote, TypertRemoteService } from '@deepseek-ai/dsh-typert-protocol'
+import { extractSessionRecords } from './session-log.js'
 
 /**
  * Hand-applied stage-3 method decorator context: the `Remote` decorator
@@ -55,6 +56,7 @@ class TokenUsageService extends TypertRemoteService {
     this._prices = {}
     this._records = []
     this._goals = { cost: 100, tokens: 100000000, count: 200 }
+    this._meta = {}
     this._ready = this._loadState()
     this._listenStream()
   }
@@ -100,11 +102,17 @@ class TokenUsageService extends TypertRemoteService {
           count: clampGoal(data.goals.count, 200),
         }
       }
+      if (data && data.meta && typeof data.meta === 'object') {
+        this._meta = { ...data.meta }
+      }
       this._prune()
     } catch (e) {
       this._records = []
     }
     await this._mergeBackfill()
+    if (!this._meta.autoBackfilled) {
+      await this._autoBackfillFromSessions()
+    }
   }
 
   /**
@@ -136,30 +144,9 @@ class TokenUsageService extends TypertRemoteService {
         await diag({ step: 'empty-or-none' })
         return
       }
-      const existing = this._records.filter((r) => typeof r.ts === 'number' && r.ts > 0)
-      const minTs = existing.length > 0 ? Math.min(...existing.map((r) => r.ts)) : Infinity
-      const seen = new Set()
-      for (const r of existing) seen.add(`${r.ts}|${r.model}|${r.input || 0}|${r.output || 0}|${r.cacheRead || 0}`)
-      let added = 0
-      for (const r of bf.records) {
-        if (typeof r.ts !== 'number' || r.ts <= 0 || r.ts >= minTs) continue
-        const key = `${r.ts}|${r.model || 'unknown'}|${r.input || 0}|${r.output || 0}|${r.cacheRead || 0}`
-        if (seen.has(key)) continue
-        seen.add(key)
-        this._records.push({
-          ts: r.ts,
-          model: r.model || 'unknown',
-          input: toNum(r.input),
-          output: toNum(r.output),
-          cacheRead: toNum(r.cacheRead),
-          cacheWrite: toNum(r.cacheWrite),
-        })
-        added++
-      }
-      await diag({ step: 'computed', existing: existing.length, minTs, added })
+      const added = this._mergeHistoricalRecords(bf.records)
+      await diag({ step: 'computed', existing: this._records.length, added })
       if (added > 0) {
-        this._records.sort((a, b) => a.ts - b.ts)
-        this._prune()
         await this._persist()
         console.log(`[token-usage] backfilled ${added} historical records`)
         await diag({ step: 'persisted', added })
@@ -170,6 +157,101 @@ class TokenUsageService extends TypertRemoteService {
       await diag({ step: 'error', message: String((e && e.message) || e), stack: String((e && e.stack) || '') })
       console.error('[token-usage] backfill merge failed:', e)
     }
+  }
+
+  /**
+   * 首次运行自动回填：直接扫描 DSH 会话日志 (~/.dsh/sessions)，把安装插件
+   * 之前的历史用量并入账本。只执行一次（meta.autoBackfilled 标记），之后
+   * 版本升级也不会重复扫描；扫描为空（新机器无会话）也写入标记避免每次启动重扫。
+   */
+  async _autoBackfillFromSessions() {
+    const diag = async (payload) => {
+      try {
+        const dTarget = await this._fs.resolve('.dsh/usage-stats.backfill.diag')
+        await this._fs.writeText(
+          dTarget,
+          JSON.stringify({ ...payload, at: new Date().toISOString() }),
+          undefined,
+          undefined,
+          this._policy(),
+        )
+      } catch (e) {
+        /* 诊断文件写失败不影响主流程 */
+      }
+    }
+    const SESSIONS = '.dsh/sessions'
+    try {
+      await diag({ step: 'auto-scan-start' })
+      const root = await this._fs.resolve(SESSIONS)
+      const workspaces = await this._fs.listDir(root)
+      const collected = []
+      for (const ws of workspaces) {
+        if (ws.type !== 'directory') continue
+        let sessionDirs = []
+        try {
+          sessionDirs = await this._fs.listDir(ws.target)
+        } catch (e) {
+          continue
+        }
+        for (const sid of sessionDirs) {
+          if (sid.type !== 'directory') continue
+          let fileTarget
+          try {
+            fileTarget = await this._fs.resolve(`${SESSIONS}/${ws.name}/${sid.name}/session.jsonl.zstd`)
+            const buf = await this._fs.readBytes(fileTarget, undefined, 512 * 1024 * 1024)
+            collected.push(...extractSessionRecords(buf))
+          } catch (e) {
+            /* 单个会话缺失/损坏不影响其他会话 */
+            continue
+          }
+        }
+      }
+      collected.sort((a, b) => a.ts - b.ts)
+      const added = this._mergeHistoricalRecords(collected)
+      this._meta.autoBackfilled = true
+      await this._persist()
+      await diag({ step: 'auto-scan-done', scanned: collected.length, added })
+      if (added > 0) {
+        console.log(`[token-usage] auto-backfilled ${added} historical records from session logs`)
+      } else {
+        console.log(`[token-usage] auto-scan: no additional historical records (${collected.length} scanned)`)
+      }
+    } catch (e) {
+      await diag({ step: 'auto-scan-error', message: String((e && e.message) || e), stack: String((e && e.stack) || '') })
+      console.error('[token-usage] auto backfill from sessions failed:', e)
+    }
+  }
+
+  /**
+   * 合并候选历史记录：只并入早于现有最早记录的 ts（避免与实时记录重叠），
+   * 按 (ts|model|tokens) 去重；返回实际并入条数。
+   */
+  _mergeHistoricalRecords(candidates) {
+    const existing = this._records.filter((r) => typeof r.ts === 'number' && r.ts > 0)
+    const minTs = existing.length > 0 ? Math.min(...existing.map((r) => r.ts)) : Infinity
+    const seen = new Set()
+    for (const r of existing) seen.add(`${r.ts}|${r.model}|${r.input || 0}|${r.output || 0}|${r.cacheRead || 0}`)
+    let added = 0
+    for (const r of candidates) {
+      if (typeof r.ts !== 'number' || r.ts <= 0 || r.ts >= minTs) continue
+      const key = `${r.ts}|${r.model || 'unknown'}|${r.input || 0}|${r.output || 0}|${r.cacheRead || 0}`
+      if (seen.has(key)) continue
+      seen.add(key)
+      this._records.push({
+        ts: r.ts,
+        model: r.model || 'unknown',
+        input: toNum(r.input),
+        output: toNum(r.output),
+        cacheRead: toNum(r.cacheRead),
+        cacheWrite: toNum(r.cacheWrite),
+      })
+      added++
+    }
+    if (added > 0) {
+      this._records.sort((a, b) => a.ts - b.ts)
+      this._prune()
+    }
+    return added
   }
 
   _prune() {
@@ -183,7 +265,7 @@ class TokenUsageService extends TypertRemoteService {
       const t = await this._target()
       await this._fs.writeText(
         t,
-        JSON.stringify({ version: 3, prices: this._prices, records: this._records, goals: this._goals }),
+        JSON.stringify({ version: 3, prices: this._prices, records: this._records, goals: this._goals, meta: this._meta }),
         undefined,
         undefined,
         this._policy(),
