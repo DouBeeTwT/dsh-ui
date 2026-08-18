@@ -98,15 +98,17 @@ ensure_profile_patch() {
     return 0
   fi
   python3 - "$PATCH_FILE" <<'PY'
-import sys, re
+import sys
 p = sys.argv[1]
 s = open(p).read()
 entry = "- insert:\n    - id: user-info\n      name: '@deepseek-ai/dsh-client-ui-user-info'\n"
 if "@deepseek-ai/dsh-client-ui-user-info" in s:
     sys.exit(0)
-# 去掉结尾多余空行后追加
+# 丢弃占位符 []（否则会与 insert 块形成两个无 --- 分隔的 YAML 文档，解析崩溃）
 s = s.rstrip("\n")
-sep = "\n\n" if s and s != "[]" else "\n"
+if s.strip() == "[]":
+    s = ""
+sep = "\n\n" if s else "\n"
 open(p, "w").write(s + sep + entry + "\n")
 PY
   echo "== profile patch 组合行已追加: $PATCH_FILE"
