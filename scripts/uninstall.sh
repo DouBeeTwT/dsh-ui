@@ -1,5 +1,5 @@
 #!/bin/bash
-# Remove the DSH desktop app, the token-usage plugin, and any legacy
+# Remove the DSH desktop app, all bundled plugins, and any legacy
 # always-on LaunchAgent.
 set -euo pipefail
 
@@ -19,12 +19,15 @@ if [ -f "$PLIST" ]; then
   rm -f "$PLIST" && echo "  removed $PLIST"
 fi
 
-echo "==> Removing token-usage plugin"
-if [ -f "$ROOT/plugin/token_usage/sync.sh" ]; then
-  bash "$ROOT/plugin/token_usage/sync.sh" --uninstall || true
-else
-  rm -rf "$HOME/.dsh/profiles/node_modules/@deepseek-ai/dsh-client-ui-token-usage"
-fi
+echo "==> Removing bundled plugins"
+for spec in token_usage:dsh-client-ui-token-usage user_info:dsh-client-ui-user-info proxy:dsh-client-ui-proxy; do
+  dir="${spec%%:*}"; pkg="${spec##*:}"
+  if [ -f "$ROOT/plugin/$dir/sync.sh" ]; then
+    bash "$ROOT/plugin/$dir/sync.sh" --uninstall || true
+  else
+    rm -rf "$HOME/.dsh/profiles/node_modules/@deepseek-ai/$pkg"
+  fi
+done
 
 echo "==> Removing app"
 if [ ! -w /Applications ]; then

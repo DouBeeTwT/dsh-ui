@@ -71,7 +71,7 @@ bash install.command
 之后才进入编译与安装步骤：
 
 1. 在本机编译 App，安装到 `/Applications/DSH.app`（覆盖已存在的旧版本）；
-2. 安装内置插件（模型用量统计）：软链 + bundle 组合 + 回填安装前历史用量；
+2. 安装内置插件（模型用量统计、角色信息、代理），并自动回填安装前的历史用量；
 3. 启动 DSH。
 
 #### 常用选项
@@ -96,53 +96,62 @@ open build/DSH.app
 # 查看依赖 + 插件是否齐全（只检测不安装）
 bash install.command --check
 # 例：✔ Xcode Command Line Tools  ✔ Homebrew  ✔ Node.js + npm (v22.x.x)  ✔ dsh ...
-#     ✔ token-usage plugin: installed (symlink OK)
+#     ✔ token-usage（用量统计）：已安装  ✔ user-info（角色信息）：已安装  ✔ proxy（代理）：已安装
 
 # 查看 App 运行状态
 build/DSH.app/Contents/MacOS/DSH --check
 # 例：server_up=true owned_process=false legacy_agent=false dsh=/.../bin/dsh ...
 ```
 
-## 内置插件：模型用量统计
+## 内置插件
 
-仓库自带一个 DSH 插件 `plugin/token_usage/`，在界面中展示模型用量
-（token 消耗、价格、趋势图）。由 `install.command` 自动完成安装：
+仓库自带三个 DSH 插件，由 `install.command` 自动安装：
 
-> **整个安装过程不经过 pnpm**：不写 `file:` 依赖、不生成 `pnpm-workspace.yaml`、
-> 无需执行 `pnpm install`。dsh 通过扁平软链解析到本目录源码，并据此生成
-> 前后端 entry。你只需运行安装脚本，不必自行安装或运行 pnpm。
+| 插件 | 目录 | 功能 |
+| --- | --- | --- |
+| 模型用量统计 | `plugin/token_usage/` | token 消耗、费用与趋势统计 |
+| 角色信息 | `plugin/user_info/` | 侧边栏用户卡片（HP/MP/XP 属性与等级） |
+| 代理 | `plugin/proxy/` | UA 改写反向代理规则管理 |
 
-- 将插件源码**软链**到 dsh 的扁平回退目录（Node 跟随软链直接读本目录源码）：
-  `~/.dsh/profiles/node_modules/@deepseek-ai/dsh-client-ui-token-usage`
-- 通过 **profile bundle 组合**挂载（`~/.dsh/profiles/web/package.json` 的
-  `dsh.profile.bundles` 里声明 `@deepseek-ai/dsh-client-ui-token-usage`，
-  插件自带的 `cordis.patch.yml` 是其 bundle patch）。旧版写入
-  `cordis.patch.yml` 的组合行会被自动清理——它与 bundle 重复会触发
-  `duplicate loader entry id: token-usage` 启动崩溃。
-- 插件依赖的 `@deepseek-ai/dsh-typert-protocol` 会被安装为**指向运行中 dsh
-  部署副本的软链**（`plugin/token_usage/node_modules/` 下）。必须是软链而非
-  实体拷贝：实体拷贝会让插件与网关各持一个模块实例，Remote 端点标记互相
-  不可见，用量统计会显示不出数据（RPC 报 invocation-unavailable）。
+三个插件均以**软链**方式安装：源码软链到 dsh 的扁平回退目录
+（`~/.dsh/profiles/node_modules/`），并注册进 dsh profile（token-usage 与
+proxy 走 bundle 组合，user-info 走 profile patch）。整个安装过程**不经过
+pnpm 等包管理器**——不写 `file:` 依赖、无需执行 `pnpm install`，dsh 直接
+通过软链解析本仓库源码并生成前后端 entry；插件依赖同样由安装脚本以软链
+方式指向运行中的 dsh 部署，自动维护。
 
-**安装时一次性回填历史用量**：安装脚本会扫描 DSH 的会话日志
-（`~/.dsh/sessions/**/session.jsonl.zstd`），生成
-`~/.dsh/usage-stats.backfill.json`，插件 Host 首次启动时把它合并进
-`~/.dsh/usage-stats.json`（去重 + 防重叠），因此**插件安装之前**的模型用量
-也会一并出现在统计里，无需手动补数据。
-
-因为走软链，更新插件只需 `git pull` 后**重启 dsh web 服务**（退出并重开
-DSH.app）即可生效，无需重新安装。手动管理：
+安装是覆盖式、幂等的，可安全重复执行（覆盖 App 前会先退出正在运行的
+DSH）。因此更新插件只需 `git pull` 后**重启 DSH.app** 即生效，无需重新
+安装。需要手动管理时，三个插件的 `sync.sh` 用法一致：
 
 ```bash
-bash plugin/token_usage/sync.sh --install    # 全新安装/覆盖（幂等）：软链 + 依赖软链 + bundle + 回填历史
-bash plugin/token_usage/sync.sh --verify    # 校验包解析、host 加载、client 挂载契约、bundle、回填产物
-bash plugin/token_usage/sync.sh --dump      # 查看 bundle 组合行 / 软链 / 回填状态
-bash plugin/token_usage/sync.sh --backfill  # 仅重新生成历史用量回填文件
-bash plugin/token_usage/sync.sh --uninstall # 移除软链、bundle 组合行与旧 patch 行
+bash plugin/token_usage/sync.sh --install    # 全新安装/覆盖（幂等）
+bash plugin/token_usage/sync.sh --verify     # 校验安装与代码契约
+bash plugin/token_usage/sync.sh --dump       # 查看安装状态
+bash plugin/token_usage/sync.sh --uninstall  # 卸载
 ```
 
-重复安装（覆盖）时，脚本会先移除旧的软链/实体目录再重建软链，可安全反复执行；
-安装脚本也会在覆盖 App 前先退出正在运行的 DSH，避免“正在使用”导致覆盖失败。
+### 模型用量统计（token-usage）
+
+在界面中展示模型用量：token 消耗、费用、每日/每周趋势与缓存命中统计，
+模型价格可在插件设置中自定义。数据文件：`~/.dsh/usage-stats.json`。
+
+**历史用量自动回填**：安装时扫描 DSH 会话日志
+（`~/.dsh/sessions/**/session.jsonl.zstd`）生成回填文件，插件首次启动时
+自动合并进统计（去重），因此**插件安装之前**的用量也会出现在图表里，
+无需手动补数据。需要时可用 `sync.sh --backfill` 重新生成。
+
+### 角色信息（user-info）
+
+在侧边栏渲染一张用户卡片：头像、昵称与 HP / MP / XP 三条属性进度条，
+属性随模型用量的积累自动升级（Lv.60 起称号为「编程斗尊」）；卡片每分钟
+自动刷新，昵称与头像可在卡片上自定义。数据文件：`~/.dsh/user-info.json`。
+
+### 代理（proxy）
+
+在设置页最下方的「代理」分类中管理反向代理规则：把指定上游站点代理到
+本地端口，并可按规则改写 User-Agent；每条规则可单独开关、测试连通性。
+代理进程运行在 DSH 后端内，随 App 启停。规则文件：`~/.dsh/proxy-rules.json`。
 
 ## 卸载
 
@@ -150,7 +159,8 @@ bash plugin/token_usage/sync.sh --uninstall # 移除软链、bundle 组合行与
 bash scripts/uninstall.sh
 ```
 
-卸载会一并移除 App、token-usage 插件（软链与组合行）以及遗留的 LaunchAgent。
+卸载会一并移除 App、全部内置插件（软链与组合行）以及遗留的 LaunchAgent；
+`~/.dsh` 下的会话与统计数据、日志文件会保留。
 
 ## 工作原理
 
@@ -158,7 +168,6 @@ bash scripts/uninstall.sh
   `dsh web --port 3080`，等健康检查通过后加载界面。
 - App 只会停止自己创建的子进程；如果 3080 已经由用户手动启动的 DSH 占用，
   App 会复用它但不会在退出时误杀该外部进程。
-- 从 0.1.x 升级时，App 会自动卸载并删除旧的常驻 LaunchAgent，避免其继续占用端口。
 - 点击窗口关闭按钮只会隐藏窗口（App 与后端继续在后台运行）；点击右上角菜单栏的 DSH 图标可重新打开窗口，点击图标菜单里的「退出 DSH」才会完全退出并同步停止 App 创建的后端。
 - 日志：`~/Library/Logs/dsh-web.log`。
 
