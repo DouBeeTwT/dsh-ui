@@ -24,7 +24,9 @@ window.__ModuleLoader__.load({
 .usage-price-divider{border:0;border-top:1px solid var(--dsw-alias-border-l1);margin:4px 0}
 .usage-heat-title{margin:0;font-size:14px;font-weight:600}
 .usage-heat-grid{overflow-x:auto}
-.usage-heat-tip{background:var(--dsw-alias-bg-overlay);border:1px solid var(--dsw-alias-border-l2);border-radius:8px;padding:8px 12px;font-size:12px;color:var(--dsw-alias-label-secondary);display:flex}
+.usage-heat-tip{background:var(--dsw-alias-bg-overlay);border:1px solid var(--dsw-alias-border-l2);border-radius:8px;padding:8px 12px;font-size:12px;color:var(--dsw-alias-label-secondary);flex-direction:column;gap:2px;display:flex}
+.usage-heat-tip-date{color:var(--dsw-alias-label-primary);font-weight:600}
+.usage-heat-tip-value{font-variant-numeric:tabular-nums}
 .usage-summary{flex-direction:row;gap:10px;display:flex}
 .usage-card{border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-2);border-radius:12px;padding:10px 14px;flex:1;min-width:0;flex-direction:column;gap:2px;display:flex}
 .usage-card-label{color:var(--dsw-alias-label-tertiary);font-size:12px;line-height:16px}
@@ -56,12 +58,7 @@ window.__ModuleLoader__.load({
 .usage-save:hover{background:var(--dsw-alias-interactive-bg-hover)}
 .usage-save:disabled{opacity:.5;cursor:default}
 .usage-saved{color:var(--dsw-alias-state-success-primary);font-size:12px}
-.usage-error{color:var(--dsw-alias-state-error-primary);margin:0;font-size:12px}
-/* 设置面板左侧导航：把"用量"行的齿轮图标换成硬币图标（icon/coin.svg）。
-   外壳的 navIcon(id) 对未知 id 回退到齿轮，且注册契约不支持自定义图标，
-   因此用结构选择器定位该行（settings.section 按 order 排序：general/models/plugins/usage/agent-presets，
-   usage 是第 4 个 navCell）。图标用 mask + currentColor 渲染，跟随主题色自动适配深浅色。 */
-[role="dialog"] nav > div > button:nth-child(4) > svg:first-child{color:transparent;background:var(--dsw-alias-label-primary);-webkit-mask:url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDI0IDEwMjQiPjxwYXRoIGQ9Ik01MTIgNjRDMjY0LjYgNjQgNjQgMjY0LjYgNjQgNTEyczIwMC42IDQ0OCA0NDggNDQ4IDQ0OC0yMDAuNiA0NDgtNDQ4Uzc1OS40IDY0IDUxMiA2NHogbTAgODIwYy0yMDUuNCAwLTM3Mi0xNjYuNi0zNzItMzcyczE2Ni42LTM3MiAzNzItMzcyIDM3MiAxNjYuNiAzNzIgMzcyLTE2Ni42IDM3Mi0zNzIgMzcyeiIgZmlsbD0iIzAwMCIvPjxwYXRoIGQ9Ik02NzEuNiAyOTloLTU5LjVjLTMgMC01LjggMS43LTcuMSA0LjRsLTkwLjYgMTgwSDUxMWwtOTAuNi0xODBjLTEuNC0yLjctNC4xLTQuNC03LjEtNC40aC02MC43Yy0xLjMgMC0yLjYgMC4zLTMuOCAxLTMuOSAyLjEtNS4zIDctMy4yIDEwLjlMNDU3IDUxNS43aC02MS40Yy00LjQgMC04IDMuNi04IDh2MjkuOWMwIDQuNCAzLjYgOCA4IDhoODEuN1Y2MDNoLTgxLjdjLTQuNCAwLTggMy42LTggOHYyOS45YzAgNC40IDMuNiA4IDggOGg4MS43VjcxN2MwIDQuNCAzLjYgOCA4IDhoNTQuM2M0LjQgMCA4LTMuNiA4LTh2LTY4LjFoODJjNC40IDAgOC0zLjYgOC04VjYxMWMwLTQuNC0zLjYtOC04LThoLTgydi00MS41aDgyYzQuNCAwIDgtMy42IDgtOHYtMjkuOWMwLTQuNC0zLjYtOC04LThoLTYybDExMS4xLTIwNC44YzAuNi0xLjIgMS0yLjUgMS0zLjgtMC4xLTQuNC0zLjctOC04LjEtOHoiIGZpbGw9IiMwMDAiLz48L3N2Zz4=") no-repeat center/16px 16px;mask:url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDI0IDEwMjQiPjxwYXRoIGQ9Ik01MTIgNjRDMjY0LjYgNjQgNjQgMjY0LjYgNjQgNTEyczIwMC42IDQ0OCA0NDggNDQ4IDQ0OC0yMDAuNiA0NDgtNDQ4Uzc1OS40IDY0IDUxMiA2NHogbTAgODIwYy0yMDUuNCAwLTM3Mi0xNjYuNi0zNzItMzcyczE2Ni42LTM3MiAzNzItMzcyIDM3MiAxNjYuNiAzNzIgMzcyLTE2Ni42IDM3Mi0zNzIgMzcyeiIgZmlsbD0iIzAwMCIvPjxwYXRoIGQ9Ik02NzEuNiAyOTloLTU5LjVjLTMgMC01LjggMS43LTcuMSA0LjRsLTkwLjYgMTgwSDUxMWwtOTAuNi0xODBjLTEuNC0yLjctNC4xLTQuNC03LjEtNC40aC02MC43Yy0xLjMgMC0yLjYgMC4zLTMuOCAxLTMuOSAyLjEtNS4zIDctMy4yIDEwLjlMNDU3IDUxNS43aC02MS40Yy00LjQgMC04IDMuNi04IDh2MjkuOWMwIDQuNCAzLjYgOCA4IDhoODEuN1Y2MDNoLTgxLjdjLTQuNCAwLTggMy42LTggOHYyOS45YzAgNC40IDMuNiA4IDggOGg4MS43VjcxN2MwIDQuNCAzLjYgOCA4IDhoNTQuM2M0LjQgMCA4LTMuNiA4LTh2LTY4LjFoODJjNC40IDAgOC0zLjYgOC04VjYxMWMwLTQuNC0zLjYtOC04LThoLTgydi00MS41aDgyYzQuNCAwIDgtMy42IDgtOHYtMjkuOWMwLTQuNC0zLjYtOC04LThoLTYybDExMS4xLTIwNC44YzAuNi0xLjIgMS0yLjUgMS0zLjgtMC4xLTQuNC0zLjctOC04LjEtOHoiIGZpbGw9IiMwMDAiLz48L3N2Zz4=") no-repeat center/16px 16px;width:16px;height:16px;-webkit-mask-size:16px 16px;mask-size:16px 16px}`;
+.usage-error{color:var(--dsw-alias-state-error-primary);margin:0;font-size:12px}`;
     const cssTag = "data-plugin-css=\"@deepseek-ai/dsh-client-ui-token-usage/css\"";
     if (typeof document !== "undefined" && document.querySelector("style[" + cssTag + "]") === null) {
       const tag = document.createElement("style");
@@ -182,7 +179,7 @@ window.__ModuleLoader__.load({
 
     function UsageSection({ ctx }) {
       const el = react.createElement;
-      const [period, setPeriod] = react.useState(7);
+      const [period, setPeriod] = react.useState(1);
       const [view, setView] = react.useState("usage");
       const [filter, setFilter] = react.useState("");
       const [data, setData] = react.useState(null);
@@ -524,6 +521,23 @@ window.__ModuleLoader__.load({
       };
       const HEAT_PITCH = 13;
       const HEAT_SIZE = 10;
+      const HEAT_MONTH_LABEL_Y = 100;
+      const heatMonthLabels = [];
+      let lastMonth = -1;
+      heatCells.forEach((c) => {
+        const parts = c.key.split("-").map(Number);
+        if (parts[2] === 1 && parts[1] !== lastMonth) {
+          heatMonthLabels.push({ col: Math.floor(c.i / 7), label: parts[1] + "月" });
+          lastMonth = parts[1];
+        }
+      });
+      const heatMonthLabelViews = heatMonthLabels.map((m) =>
+        el("text", {
+          key: "m" + m.col, x: m.col * HEAT_PITCH, y: HEAT_MONTH_LABEL_Y,
+          textAnchor: "start", fontSize: 11,
+          style: { fill: "var(--dsw-alias-label-tertiary)" }
+        }, m.label)
+      );
       const heatCellsView = heatCells.map((c) => {
         const col = Math.floor(c.i / 7);
         const row = c.i % 7;
@@ -540,23 +554,31 @@ window.__ModuleLoader__.load({
         });
       });
       const heatBlock = el("div", { className: "usage-heat" },
-        el("h3", { className: "usage-heat-title" }, "Token 热力图"),
+        el("h3", { className: "usage-heat-title" }, "活跃日历"),
         data && !data.daily
           ? el("p", { className: "usage-intro" }, "热力数据尚未就绪：请完全退出并重启 DSH（菜单栏图标 → 退出），刷新本页后即显示颜色。")
           : null,
         el("div", { className: "usage-heat-grid" },
           el("svg", {
-            viewBox: "0 0 673 88", width: 673, height: 88,
+            viewBox: "0 0 673 114", width: 673, height: 114,
             style: { display: "block", maxWidth: "100%" },
             onMouseMove: (e) => placeTip(heatTipRef.current, e, 12, 14)
-          }, ...heatCellsView)
+          }, ...heatCellsView, ...heatMonthLabelViews)
         ),
         el("div", {
           ref: heatTipRef,
           className: "usage-heat-tip usage-tip-float",
           style: { visibility: heatHover ? "visible" : "hidden" }
         },
-          heatHover ? "「" + heatHover.key + "」使用了「" + fmtTokensCard(heatHover.tokens) + "」Token" : ""
+          heatHover
+            ? (function () {
+                var p = heatHover.key.split("-").map(Number);
+                return [
+                  el("div", { key: "d", className: "usage-heat-tip-date" }, p[1] + "月" + p[2] + "日"),
+                  el("div", { key: "v", className: "usage-heat-tip-value" }, fmtTokensCard(heatHover.tokens))
+                ];
+              })()
+            : null
         )
       );
 
@@ -710,6 +732,34 @@ window.__ModuleLoader__.load({
 
     const inject = ["slots", "remote"];
 
+    // 硬币图标 SVG path（与 icon/coin.svg 一致，viewBox 0 0 1024 1024）。
+    const COIN_SVG_PATHS = '<path d="M512 64C264.6 64 64 264.6 64 512s200.6 448 448 448 448-200.6 448-448S759.4 64 512 64z m0 820c-205.4 0-372-166.6-372-372s166.6-372 372-372 372 166.6 372 372-166.6 372-372 372z" fill="currentColor"/><path d="M671.6 299h-59.5c-3 0-5.8 1.7-7.1 4.4l-90.6 180H511l-90.6-180c-1.4-2.7-4.1-4.4-7.1-4.4h-60.7c-1.3 0-2.6 0.3-3.8 1-3.9 2.1-5.3 7-3.2 10.9L457 515.7h-61.4c-4.4 0-8 3.6-8 8v29.9c0 4.4 3.6 8 8 8h81.7V603h-81.7c-4.4 0-8 3.6-8 8v29.9c0 4.4 3.6 8 8 8h81.7V717c0 4.4 3.6 8 8 8h54.3c4.4 0 8-3.6 8-8v-68.1h82c4.4 0 8-3.6 8-8V611c0-4.4-3.6-8-8-8h-82v-41.5h82c4.4 0 8-3.6 8-8v-29.9c0-4.4-3.6-8-8-8h-62l111.1-204.8c0.6-1.2 1-2.5 1-3.8-0.1-4.4-3.7-8-8.1-8z" fill="currentColor"/>';
+
+    // 把设置面板导航中"用量"行的齿轮图标替换为硬币图标。
+    // 用文本内容匹配导航按钮（不依赖位置序号），原 SVG 整体替换为硬币 SVG，
+    // 使用 currentColor 自动适配深色/浅色模式。
+    function patchCoinIcon() {
+      if (typeof document === "undefined") return;
+      const navCells = document.querySelectorAll('[role="dialog"] nav button');
+      for (const cell of navCells) {
+        const label = cell.querySelector("span");
+        if (!label || label.textContent !== "用量") continue;
+        const oldSvg = cell.querySelector("svg");
+        if (!oldSvg) continue;
+        if (oldSvg.getAttribute("data-coin") === "true") continue; // 已替换
+        const newSvg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+        newSvg.setAttribute("viewBox", "0 0 1024 1024");
+        newSvg.setAttribute("width", "16");
+        newSvg.setAttribute("height", "16");
+        newSvg.setAttribute("fill", "none");
+        newSvg.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+        newSvg.setAttribute("data-coin", "true");
+        newSvg.style.flex = "none";
+        newSvg.innerHTML = COIN_SVG_PATHS;
+        oldSvg.replaceWith(newSvg);
+      }
+    }
+
     async function apply(ctx) {
       const slots = ctx.get("slots");
       if (slots === undefined) return;
@@ -718,7 +768,15 @@ window.__ModuleLoader__.load({
         { name: "settings.section", id: "usage", order: 16, label: () => "用量" },
         (props) => react.createElement(UsageSection, { ctx })
       ));
+      // 监听设置面板 DOM 变化，在面板打开时替换导航图标。
+      let observer = null;
+      if (typeof document !== "undefined") {
+        patchCoinIcon();
+        observer = new MutationObserver(() => patchCoinIcon());
+        observer.observe(document.body, { childList: true, subtree: true });
+      }
       return async () => {
+        if (observer) observer.disconnect();
         await disposeRemote();
       };
     }

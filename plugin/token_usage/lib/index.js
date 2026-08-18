@@ -338,8 +338,14 @@ class TokenUsageService extends TypertRemoteService {
     }
 
     const windows = {}
+    // 1/7/30 天按自然日对齐：1 天=今天，7 天=本周至今(含今天起倒推 7 个自然日)，
+    // 30 天同理。避免"最近 24 小时"把昨天同一时刻后的数据算进 1 天。
+    const nowD = new Date(now)
+    const startOfToday = new Date(nowD.getFullYear(), nowD.getMonth(), nowD.getDate())
     for (const days of [1, 7, 30]) {
-      const since = now - days * DAY
+      const start = new Date(startOfToday)
+      start.setDate(start.getDate() - (days - 1))
+      const since = start.getTime()
       const byModel = {}
       for (const m of models) byModel[m] = { cacheRead: 0, input: 0, output: 0, cost: 0, count: 0 }
       let tCache = 0
