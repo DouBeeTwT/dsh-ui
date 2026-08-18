@@ -88,30 +88,47 @@ ensure_dep_links() {
 }
 
 # ---- 确保 profile patch 组合行（cordis.patch.yml 的 insert 行）----
+# 注意：不做 bash 层 grep 早退 —— python 段同时承担自愈（修复历史坏文件），
+# 早退会让已损坏的 "[]"+insert 文件永远得不到修复。
 ensure_profile_patch() {
   mkdir -p "$PROFILE_DIR"
   if [ ! -f "$PATCH_FILE" ]; then
     printf '# Your patch layer for this dsh profile.\n[]\n' > "$PATCH_FILE"
-  fi
-  if grep -Fq "$PKG_NAME" "$PATCH_FILE" 2>/dev/null; then
-    echo "== profile patch 组合行已就位: $PATCH_FILE"
-    return 0
   fi
   python3 - "$PATCH_FILE" <<'PY'
 import sys
 p = sys.argv[1]
 s = open(p).read()
 entry = "- insert:\n    - id: user-info\n      name: '@deepseek-ai/dsh-client-ui-user-info'\n"
+
+def is_placeholder(l):
+    return l.strip() == "[]"
+
+def is_noise(l):  # 空行 / [] 占位符 / 注释
+    t = l.strip()
+    return (not t) or t == "[]" or t.startswith("#")
+
+lines = s.split("\n")
+has_content = any(not is_noise(l) for l in lines)
+
+# 自愈：[] 占位符若与其它实质内容并存，会形成两段无 --- 分隔的非法 YAML，丢弃
+if has_content and any(is_placeholder(l) for l in lines):
+    lines = [l for l in lines if not is_placeholder(l)]
+    s = "\n".join(lines).strip("\n")
+
 if "@deepseek-ai/dsh-client-ui-user-info" in s:
+    open(p, "w").write(s + "\n")
     sys.exit(0)
-# 丢弃占位符 []（否则会与 insert 块形成两个无 --- 分隔的 YAML 文档，解析崩溃）
-s = s.rstrip("\n")
-if s.strip() == "[]":
-    s = ""
-sep = "\n\n" if s else "\n"
-open(p, "w").write(s + sep + entry + "\n")
+
+if not has_content:
+    # 文件只有注释/[]/空行：保留注释头，丢弃 []，直接写入 insert 块
+    head = "\n".join(l for l in lines if l.strip().startswith("#")).rstrip("\n")
+    open(p, "w").write((head + "\n\n" + entry) if head else entry)
+    sys.exit(0)
+
+open(p, "w").write(s + "\n\n" + entry + "\n")
 PY
-  echo "== profile patch 组合行已追加: $PATCH_FILE"
+  echo "== profile patch 组合行已就位: $PATCH_FILE"
 }
 
 # ---- 卸载：移除软链与 patch 组合行 ----
