@@ -261,7 +261,23 @@ window.__ModuleLoader__.load({
             if (alive) setLoaded(true);
           }
         };
+        // 定时刷新：每分钟只更新 HP/MP/XP（不动昵称/头像，避免闪烁）
+        const refreshStats = async () => {
+          const [week, stats] = await Promise.all([
+            infoGetWeekStats(ctx).catch(() => null),
+            infoGetStats(ctx).catch(() => null)
+          ]);
+          if (!alive) return;
+          if (week && typeof week.hp === "number") setHp(safePct(week.hp));
+          if (week && typeof week.mp === "number") setMp(safePct(week.mp));
+          setXp((prev) => ({
+            level: (stats && typeof stats.level === "number") ? stats.level : prev.level,
+            progress: (stats && typeof stats.progress === "number") ? safePct(stats.progress) : prev.progress
+          }));
+        };
         load();
+        const timer = window.setInterval(refreshStats, 60000);
+        return () => { alive = false; window.clearInterval(timer); };
       }, []);
 
       const openEdit = () => {
@@ -553,7 +569,7 @@ window.__ModuleLoader__.load({
           if (stats && typeof stats.progress === "number") setXp(safePct(stats.progress));
         };
         load();
-        const timer = window.setInterval(load, 30000);
+        const timer = window.setInterval(load, 60000);
         return () => { alive = false; window.clearInterval(timer); };
       }, []);
 
