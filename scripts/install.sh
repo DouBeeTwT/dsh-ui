@@ -135,6 +135,13 @@ if pgrep -x DSH >/dev/null 2>&1; then
   pgrep -x DSH >/dev/null 2>&1 && pkill -x DSH 2>/dev/null || true
   sleep 1
 fi
+# 清理可能泄漏的孤儿后端（非优雅退出时 App 的子进程会残留在 3080 上，
+# 导致新装的 App 一直复用旧后端）；安装本就要求干净状态，一并释放端口
+if lsof -ti :3080 >/dev/null 2>&1; then
+  lsof -ti :3080 | xargs kill 2>/dev/null || true
+  sleep 1
+  lsof -ti :3080 >/dev/null 2>&1 && { lsof -ti :3080 | xargs kill -9 2>/dev/null || true; sleep 1; } || true
+fi
 if [ ! -w /Applications ]; then
   echo "    /Applications 不可直接写入，尝试 sudo（可能需要输入密码）"
   sudo rm -rf "/Applications/$APP_NAME"

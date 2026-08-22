@@ -40,6 +40,22 @@ if let bundleIdentifier = Bundle.main.bundleIdentifier {
     }
 }
 
+// ── SIGTERM / SIGINT: stop the App-owned backend even on forced termination ──
+// A naked SIGTERM (e.g. `pkill DSH`) bypasses NSApplication's termination flow;
+// without this handler the backend child survives as an orphan on port 3080 and
+// every later launch silently reuses the stale server (old code vs new disk).
+private var signalSources: [DispatchSourceSignal] = []
+for sig in [SIGTERM, SIGINT] {
+    signal(sig, SIG_IGN)
+    let source = DispatchSource.makeSignalSource(signal: sig, queue: .main)
+    source.setEventHandler {
+        ServerManager.shared.shutdown()
+        exit(0)
+    }
+    source.resume()
+    signalSources.append(source)
+}
+
 MainActor.assumeIsolated {
     let app = NSApplication.shared
     let delegate = AppDelegate()

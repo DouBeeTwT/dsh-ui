@@ -107,10 +107,10 @@ final class ServerManager {
                 return false
             }
             process.executableURL = URL(fileURLWithPath: nodePath)
-            process.arguments = [dshPath, "web", "--port", "\(ServerManager.port)"]
+            process.arguments = [dshPath, "web", "--port", "\(ServerManager.port)", "--no-open"]
         } else {
             process.executableURL = URL(fileURLWithPath: dshPath)
-            process.arguments = ["web", "--port", "\(ServerManager.port)"]
+            process.arguments = ["web", "--port", "\(ServerManager.port)", "--no-open"]
         }
 
         process.currentDirectoryURL = URL(fileURLWithPath: NSHomeDirectory(), isDirectory: true)
@@ -132,7 +132,7 @@ final class ServerManager {
             }
             let handle = try FileHandle(forWritingTo: URL(fileURLWithPath: logPath))
             try handle.seekToEnd()
-            writeLogLine("launching App-owned backend: \(dshPath) web --port \(ServerManager.port)", to: handle)
+            writeLogLine("launching App-owned backend: \(dshPath) web --port \(ServerManager.port) --no-open", to: handle)
             process.standardOutput = handle
             process.standardError = handle
 
